@@ -50,8 +50,10 @@ class _AturanScreenState extends State<AturanScreen> {
                       decoration: BoxDecoration(
                           color: mapelColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8)),
-                      child: Icon(AppTheme.mapelIcons[a.mapel] ?? Icons.quiz,
-                          color: mapelColor),
+                      child: Text(
+                        AppTheme.mapelEmoji[a.mapel] ?? '📘',
+                        style: const TextStyle(fontSize: 20),
+                      ),
                     ),
                     title: Text('${a.mapel} - Kelas ${a.kelas}',
                         style: const TextStyle(fontWeight: FontWeight.bold)),

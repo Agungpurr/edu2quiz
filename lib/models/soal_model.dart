@@ -1,14 +1,17 @@
-// models/soal_model.dart
+import 'package:flutter/material.dart';
+
+// ── SoalModel ────────────────────────────────────────────────────
 class SoalModel {
   final String id;
   final String pertanyaan;
-  final List<String> pilihan; // 4 pilihan jawaban
-  final int jawabanBenar; // index 0-3
-  final String mapel; // Matematika, IPA, IPS, B.Indonesia
-  final String kelas; // '4', '5', '6'
-  final String tingkat; // 'mudah', 'sedang', 'sulit'
+  final List<String> pilihan;
+  final int jawabanBenar;
+  final String mapel;
+  final String kelas;
+  final String tingkat;
   final int poin;
   final DateTime createdAt;
+  final String? imageUrl;
 
   SoalModel({
     required this.id,
@@ -20,55 +23,57 @@ class SoalModel {
     required this.tingkat,
     required this.poin,
     required this.createdAt,
+    this.imageUrl,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'pertanyaan': pertanyaan,
-      'pilihan_a': pilihan[0],
-      'pilihan_b': pilihan[1],
-      'pilihan_c': pilihan[2],
-      'pilihan_d': pilihan[3],
-      'jawaban_benar': jawabanBenar,
-      'mapel': mapel,
-      'kelas': kelas,
-      'tingkat': tingkat,
-      'poin': poin,
-      'created_at': createdAt.millisecondsSinceEpoch,
-    };
-  }
+  // Getter untuk cek apakah soal punya gambar
+  bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
 
-  factory SoalModel.fromMap(Map<String, dynamic> map) {
-    return SoalModel(
-      id: map['id'],
-      pertanyaan: map['pertanyaan'],
-      pilihan: [
-        map['pilihan_a'],
-        map['pilihan_b'],
-        map['pilihan_c'],
-        map['pilihan_d'],
-      ],
-      jawabanBenar: map['jawaban_benar'],
-      mapel: map['mapel'],
-      kelas: map['kelas'],
-      tingkat: map['tingkat'],
-      poin: map['poin'],
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']),
-    );
-  }
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'pertanyaan': pertanyaan,
+        'pilihan_a': pilihan[0],
+        'pilihan_b': pilihan[1],
+        'pilihan_c': pilihan[2],
+        'pilihan_d': pilihan[3],
+        'jawaban_benar': jawabanBenar,
+        'mapel': mapel,
+        'kelas': kelas,
+        'tingkat': tingkat,
+        'poin': poin,
+        'created_at': createdAt.millisecondsSinceEpoch,
+        'image_url': imageUrl,
+      };
+
+  factory SoalModel.fromMap(Map<String, dynamic> map) => SoalModel(
+        id: map['id'],
+        pertanyaan: map['pertanyaan'],
+        pilihan: [
+          map['pilihan_a'],
+          map['pilihan_b'],
+          map['pilihan_c'],
+          map['pilihan_d'],
+        ],
+        jawabanBenar: map['jawaban_benar'],
+        mapel: map['mapel'],
+        kelas: map['kelas'],
+        tingkat: map['tingkat'],
+        poin: map['poin'],
+        createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']),
+        imageUrl: map['image_url'],
+      );
 }
 
-// models/aturan_model.dart
+// ── AturanModel ──────────────────────────────────────────────────
 class AturanModel {
   final String id;
   final String kelas;
   final String mapel;
-  final int jumlahSoal;
-  final int durasiMenit;
-  final int minPoin; // nilai minimum lulus
-  final bool acak; // acak soal
-  DateTime updatedAt;
+  int jumlahSoal;
+  int durasiMenit;
+  int minPoin;
+  bool acak;
+  final DateTime updatedAt;
 
   AturanModel({
     required this.id,
@@ -81,29 +86,25 @@ class AturanModel {
     required this.updatedAt,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'kelas': kelas,
-      'mapel': mapel,
-      'jumlah_soal': jumlahSoal,
-      'durasi_menit': durasiMenit,
-      'min_poin': minPoin,
-      'acak': acak ? 1 : 0,
-      'updated_at': updatedAt.millisecondsSinceEpoch,
-    };
-  }
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'kelas': kelas,
+        'mapel': mapel,
+        'jumlah_soal': jumlahSoal,
+        'durasi_menit': durasiMenit,
+        'min_poin': minPoin,
+        'acak': acak ? 1 : 0,
+        'updated_at': updatedAt.millisecondsSinceEpoch,
+      };
 
-  factory AturanModel.fromMap(Map<String, dynamic> map) {
-    return AturanModel(
-      id: map['id'],
-      kelas: map['kelas'],
-      mapel: map['mapel'],
-      jumlahSoal: map['jumlah_soal'],
-      durasiMenit: map['durasi_menit'],
-      minPoin: map['min_poin'],
-      acak: map['acak'] == 1,
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updated_at']),
-    );
-  }
+  factory AturanModel.fromMap(Map<String, dynamic> map) => AturanModel(
+        id: map['id'],
+        kelas: map['kelas'],
+        mapel: map['mapel'],
+        jumlahSoal: map['jumlah_soal'],
+        durasiMenit: map['durasi_menit'],
+        minPoin: map['min_poin'],
+        acak: map['acak'] == 1,
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updated_at']),
+      );
 }

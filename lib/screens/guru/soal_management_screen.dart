@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/soal_model.dart';
 import '../../services/database_service.dart';
 import '../../utils/app_theme.dart';
@@ -19,6 +20,10 @@ class _SoalManagementScreenState extends State<SoalManagementScreen> {
   String _filterKelas = 'Semua';
   String _filterMapel = 'Semua';
 
+  // Cache jumlah soal per tingkat per mapel per kelas
+  // key: '$kelas-$mapel-$tingkat'
+  Map<String, int> _soalCount = {};
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +35,29 @@ class _SoalManagementScreenState extends State<SoalManagementScreen> {
     final kelas = _filterKelas == 'Semua' ? null : _filterKelas;
     final mapel = _filterMapel == 'Semua' ? null : _filterMapel;
     _soalList = await _db.getAllSoal(kelas: kelas, mapel: mapel);
+
+    // Hitung jumlah soal per kombinasi untuk enforce batas
+    await _refreshSoalCount();
+
     setState(() => _loading = false);
+  }
+
+  Future<void> _refreshSoalCount() async {
+    final semua = await _db.getAllSoal();
+    final Map<String, int> count = {};
+    for (final s in semua) {
+      final key = '${s.kelas}-${s.mapel}-${s.tingkat}';
+      count[key] = (count[key] ?? 0) + 1;
+    }
+    _soalCount = count;
+  }
+
+  int _getCount(String kelas, String mapel, String tingkat) {
+    return _soalCount['$kelas-$mapel-$tingkat'] ?? 0;
+  }
+
+  bool _isAtLimit(String kelas, String mapel, String tingkat) {
+    return _getCount(kelas, mapel, tingkat) >= AppConstants.maxSoalPerTingkat;
   }
 
   @override
@@ -40,6 +67,7 @@ class _SoalManagementScreenState extends State<SoalManagementScreen> {
       appBar: AppBar(title: const Text('Bank Soal')),
       body: Column(
         children: [
+          // ── Filter bar ──
           Container(
             color: Colors.white,
             padding: const EdgeInsets.all(12),
@@ -80,6 +108,16 @@ class _SoalManagementScreenState extends State<SoalManagementScreen> {
               ],
             ),
           ),
+
+          // ── Quota info (tampil jika filter spesifik) ──
+          if (_filterKelas != 'Semua' && _filterMapel != 'Semua')
+            _QuotaBar(
+              kelas: _filterKelas,
+              mapel: _filterMapel,
+              getCount: _getCount,
+              max: AppConstants.maxSoalPerTingkat,
+            ),
+
           if (!_loading)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -90,6 +128,7 @@ class _SoalManagementScreenState extends State<SoalManagementScreen> {
                 ],
               ),
             ),
+
           Expanded(
             child: _loading
                 ? const LoadingWidget(message: 'Memuat soal...')
@@ -153,6 +192,10 @@ class _SoalManagementScreenState extends State<SoalManagementScreen> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => SoalFormSheet(
         soal: soal,
+        isAtLimit: (kelas, mapel, tingkat) =>
+            // Edit soal yang sudah ada tidak dihitung limit
+            soal == null ? _isAtLimit(kelas, mapel, tingkat) : false,
+        getCount: _getCount,
         onSave: (s) async {
           if (soal == null) {
             await _db.addSoal(s);
@@ -167,10 +210,88 @@ class _SoalManagementScreenState extends State<SoalManagementScreen> {
   }
 }
 
+// ── Quota bar ─────────────────────────────────────────────────────
+class _QuotaBar extends StatelessWidget {
+  final String kelas, mapel;
+  final int Function(String, String, String) getCount;
+  final int max;
+
+  const _QuotaBar({
+    required this.kelas,
+    required this.mapel,
+    required this.getCount,
+    required this.max,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Kuota soal — Kelas $kelas · $mapel',
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: DuoColors.textGrey),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: AppConstants.tingkatList.map((t) {
+              final count = getCount(kelas, mapel, t);
+              final isFull = count >= max;
+              final color = AppConstants.tingkatColors[t] ?? DuoColors.orange;
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(AppConstants.tingkatLabel[t] ?? t,
+                              style: const TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.w700)),
+                          const Spacer(),
+                          Text(
+                            '$count/$max',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                color: isFull ? DuoColors.red : color),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: count / max,
+                          minHeight: 6,
+                          backgroundColor: DuoColors.border,
+                          valueColor: AlwaysStoppedAnimation(
+                              isFull ? DuoColors.red : color),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Soal card ─────────────────────────────────────────────────────
 class _SoalCard extends StatelessWidget {
   final SoalModel soal;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback onEdit, onDelete;
 
   const _SoalCard(
       {required this.soal, required this.onEdit, required this.onDelete});
@@ -188,6 +309,7 @@ class _SoalCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Tags row ──
             Row(
               children: [
                 Container(
@@ -224,6 +346,17 @@ class _SoalCard extends StatelessWidget {
                       style: TextStyle(color: tingkatColor, fontSize: 11)),
                 ),
                 const Spacer(),
+                // Badge gambar jika ada
+                if (soal.hasImage)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                        color: DuoColors.purple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8)),
+                    child: const Text('🖼️', style: TextStyle(fontSize: 11)),
+                  ),
                 Text('+${soal.poin} poin',
                     style: const TextStyle(
                         color: Colors.orange,
@@ -231,10 +364,35 @@ class _SoalCard extends StatelessWidget {
                         fontSize: 12)),
               ],
             ),
+
+            // ── Preview gambar kecil ──
+            if (soal.hasImage) ...[
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: soal.imageUrl!,
+                  height: 80,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => Container(
+                    height: 80,
+                    color: DuoColors.border,
+                    child: const Center(
+                        child: Text('🖼️ Gambar tidak dapat dimuat',
+                            style: TextStyle(
+                                color: DuoColors.textGrey, fontSize: 12))),
+                  ),
+                ),
+              ),
+            ],
+
             const SizedBox(height: 8),
             Text(soal.pertanyaan,
                 style: const TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
+
+            // ── Pilihan jawaban ──
             ...soal.pilihan.asMap().entries.map((e) {
               final isBenar = e.key == soal.jawabanBenar;
               return Row(
@@ -271,6 +429,7 @@ class _SoalCard extends StatelessWidget {
                 ],
               );
             }),
+
             const SizedBox(height: 6),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -295,11 +454,20 @@ class _SoalCard extends StatelessWidget {
   }
 }
 
+// ── Form sheet ────────────────────────────────────────────────────
 class SoalFormSheet extends StatefulWidget {
   final SoalModel? soal;
+  final bool Function(String kelas, String mapel, String tingkat) isAtLimit;
+  final int Function(String kelas, String mapel, String tingkat) getCount;
   final Function(SoalModel) onSave;
 
-  const SoalFormSheet({super.key, this.soal, required this.onSave});
+  const SoalFormSheet({
+    super.key,
+    this.soal,
+    required this.isAtLimit,
+    required this.getCount,
+    required this.onSave,
+  });
 
   @override
   State<SoalFormSheet> createState() => _SoalFormSheetState();
@@ -308,6 +476,7 @@ class SoalFormSheet extends StatefulWidget {
 class _SoalFormSheetState extends State<SoalFormSheet> {
   final _formKey = GlobalKey<FormState>();
   final _pertanyaanCtrl = TextEditingController();
+  final _imageUrlCtrl = TextEditingController();
   final List<TextEditingController> _pilihanCtrl =
       List.generate(4, (_) => TextEditingController());
   String _kelas = '4';
@@ -315,11 +484,14 @@ class _SoalFormSheetState extends State<SoalFormSheet> {
   String _tingkat = 'sedang';
   int _jawabanBenar = 0;
   bool _saving = false;
+  bool _previewingImage = false;
+
+  bool get _isEdit => widget.soal != null;
 
   @override
   void initState() {
     super.initState();
-    if (widget.soal != null) {
+    if (_isEdit) {
       final s = widget.soal!;
       _pertanyaanCtrl.text = s.pertanyaan;
       for (int i = 0; i < 4; i++) _pilihanCtrl[i].text = s.pilihan[i];
@@ -327,8 +499,22 @@ class _SoalFormSheetState extends State<SoalFormSheet> {
       _mapel = s.mapel;
       _tingkat = s.tingkat;
       _jawabanBenar = s.jawabanBenar;
+      _imageUrlCtrl.text = s.imageUrl ?? '';
     }
   }
+
+  @override
+  void dispose() {
+    _pertanyaanCtrl.dispose();
+    _imageUrlCtrl.dispose();
+    for (final c in _pilihanCtrl) c.dispose();
+    super.dispose();
+  }
+
+  bool get _limitReached =>
+      !_isEdit && widget.isAtLimit(_kelas, _mapel, _tingkat);
+
+  int get _currentCount => widget.getCount(_kelas, _mapel, _tingkat);
 
   @override
   Widget build(BuildContext context) {
@@ -345,10 +531,11 @@ class _SoalFormSheetState extends State<SoalFormSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Header ──
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(widget.soal != null ? 'Edit Soal' : 'Tambah Soal',
+                  Text(_isEdit ? 'Edit Soal' : 'Tambah Soal',
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.bold)),
                   IconButton(
@@ -358,6 +545,8 @@ class _SoalFormSheetState extends State<SoalFormSheet> {
               ),
               const Divider(),
               const SizedBox(height: 8),
+
+              // ── Kelas & Mapel ──
               Row(
                 children: [
                   Expanded(
@@ -365,7 +554,7 @@ class _SoalFormSheetState extends State<SoalFormSheet> {
                       value: _kelas,
                       decoration: const InputDecoration(
                           labelText: 'Kelas', isDense: true),
-                      items: ['4', '5', '6']
+                      items: AppConstants.kelasList
                           .map((k) => DropdownMenuItem(
                               value: k, child: Text('Kelas $k')))
                           .toList(),
@@ -388,27 +577,87 @@ class _SoalFormSheetState extends State<SoalFormSheet> {
                 ],
               ),
               const SizedBox(height: 12),
+
+              // ── Tingkat dengan kuota ──
               DropdownButtonFormField<String>(
                 value: _tingkat,
                 decoration:
                     const InputDecoration(labelText: 'Tingkat Kesulitan'),
-                items: AppConstants.tingkatList
-                    .map((t) => DropdownMenuItem(
-                          value: t,
-                          child: Row(children: [
-                            Icon(Icons.circle,
-                                size: 12, color: AppConstants.tingkatColors[t]),
-                            const SizedBox(width: 8),
-                            Text(AppConstants.tingkatLabel[t] ?? t),
-                            Text(' (+${AppConstants.tingkatPoin[t]} poin)',
-                                style: const TextStyle(
-                                    color: Colors.grey, fontSize: 12)),
-                          ]),
-                        ))
-                    .toList(),
+                items: AppConstants.tingkatList.map((t) {
+                  final count = widget.getCount(_kelas, _mapel, t);
+                  final full =
+                      !_isEdit && count >= AppConstants.maxSoalPerTingkat;
+                  return DropdownMenuItem(
+                    value: t,
+                    child: Row(children: [
+                      Icon(Icons.circle,
+                          size: 12,
+                          color: full
+                              ? DuoColors.textGrey
+                              : AppConstants.tingkatColors[t]),
+                      const SizedBox(width: 8),
+                      Text(
+                        AppConstants.tingkatLabel[t] ?? t,
+                        style:
+                            TextStyle(color: full ? DuoColors.textGrey : null),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$count/${AppConstants.maxSoalPerTingkat}',
+                        style: TextStyle(
+                          color: full ? DuoColors.red : Colors.grey,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (full) ...[
+                        const SizedBox(width: 4),
+                        const Text('PENUH',
+                            style: TextStyle(
+                                color: DuoColors.red,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900)),
+                      ],
+                    ]),
+                  );
+                }).toList(),
                 onChanged: (v) => setState(() => _tingkat = v!),
               ),
+
+              // ── Banner limit reached ──
+              if (_limitReached) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: DuoColors.redLight,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: DuoColors.red.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('🚫', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Batas maksimal $_currentCount/${AppConstants.maxSoalPerTingkat} soal '
+                          '${AppConstants.tingkatLabel[_tingkat]} untuk '
+                          '$_mapel Kelas $_kelas sudah tercapai.\n'
+                          'Hapus soal lama untuk menambah yang baru.',
+                          style: const TextStyle(
+                              color: DuoColors.red,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 12),
+
+              // ── Pertanyaan ──
               TextFormField(
                 controller: _pertanyaanCtrl,
                 maxLines: 3,
@@ -417,6 +666,63 @@ class _SoalFormSheetState extends State<SoalFormSheet> {
                 validator: (v) => v!.isEmpty ? 'Pertanyaan harus diisi' : null,
               ),
               const SizedBox(height: 12),
+
+              // ── URL Gambar (opsional) ──
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextFormField(
+                    controller: _imageUrlCtrl,
+                    decoration: InputDecoration(
+                      labelText: '🖼️ URL Gambar (opsional)',
+                      hintText: 'https://...',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _previewingImage
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: DuoColors.blue,
+                        ),
+                        onPressed: () => setState(
+                            () => _previewingImage = !_previewingImage),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  // Preview gambar
+                  if (_previewingImage && _imageUrlCtrl.text.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: CachedNetworkImage(
+                        imageUrl: _imageUrlCtrl.text,
+                        height: 140,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          height: 140,
+                          color: DuoColors.border,
+                          child: const Center(
+                              child: CircularProgressIndicator(
+                                  color: DuoColors.green)),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          height: 80,
+                          color: DuoColors.redLight,
+                          child: const Center(
+                              child: Text(
+                                  '❌ URL tidak valid atau gambar tidak dapat dimuat',
+                                  style: TextStyle(
+                                      color: DuoColors.red, fontSize: 12))),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // ── Pilihan jawaban ──
               const Text('Pilihan Jawaban (pilih yang benar)',
                   style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
@@ -464,7 +770,9 @@ class _SoalFormSheetState extends State<SoalFormSheet> {
                   ),
                 );
               }),
-              const SizedBox(height: 12),
+
+              const SizedBox(height: 8),
+              // ── Konfirmasi jawaban benar ──
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -487,16 +795,25 @@ class _SoalFormSheetState extends State<SoalFormSheet> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 16),
+
+              // ── Tombol simpan ──
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _saving ? null : _save,
+                  onPressed: (_saving || _limitReached) ? null : _save,
+                  style: _limitReached
+                      ? ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[300])
+                      : null,
                   child: _saving
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(widget.soal != null
+                      : Text(_isEdit
                           ? 'Simpan Perubahan'
-                          : 'Tambah Soal'),
+                          : _limitReached
+                              ? 'Batas Soal Tercapai'
+                              : 'Tambah Soal'),
                 ),
               ),
               const SizedBox(height: 16),
@@ -509,7 +826,12 @@ class _SoalFormSheetState extends State<SoalFormSheet> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_limitReached) return;
+
     setState(() => _saving = true);
+
+    final imageUrl = _imageUrlCtrl.text.trim();
+
     final soal = SoalModel(
       id: widget.soal?.id ?? const Uuid().v4(),
       pertanyaan: _pertanyaanCtrl.text.trim(),
@@ -519,6 +841,7 @@ class _SoalFormSheetState extends State<SoalFormSheet> {
       kelas: _kelas,
       tingkat: _tingkat,
       poin: AppConstants.tingkatPoin[_tingkat] ?? 10,
+      imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
       createdAt: widget.soal?.createdAt ?? DateTime.now(),
     );
     await widget.onSave(soal);

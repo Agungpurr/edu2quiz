@@ -27,7 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     final auth = context.read<AuthProvider>();
-    final ok = await auth.login(_usernameCtrl.text.trim(), _passwordCtrl.text.trim());
+    final ok =
+        await auth.login(_usernameCtrl.text.trim(), _passwordCtrl.text.trim());
     if (!ok && mounted) _showError(auth.error ?? 'Login gagal');
   }
 
@@ -60,17 +61,28 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               children: [
                 Container(
-                  width: 100, height: 100,
+                  width: 100,
+                  height: 100,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.25),
                     shape: BoxShape.circle,
                   ),
-                  child: const Center(child: Text('🦉', style: TextStyle(fontSize: 54))),
+                  child: const Center(
+                      child: Text('🦉', style: TextStyle(fontSize: 54))),
                 ),
                 const SizedBox(height: 16),
-                const Text('EduQuiz', style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                const Text('EduQuiz',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1)),
                 const SizedBox(height: 4),
-                const Text('Belajar Seru Tiap Hari! ✨', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w700)),
+                const Text('Belajar Seru Tiap Hari! ✨',
+                    style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700)),
               ],
             ),
           ),
@@ -82,32 +94,46 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 24),
-                  const Text('USERNAME', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: DuoColors.textGrey, letterSpacing: 1)),
+                  const Text('USERNAME',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: DuoColors.textGrey,
+                          letterSpacing: 1)),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _usernameCtrl,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                    decoration: const InputDecoration(hintText: 'Masukkan username'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 16),
+                    decoration:
+                        const InputDecoration(hintText: 'Masukkan username'),
                     onFieldSubmitted: (_) => _login(),
                   ),
                   const SizedBox(height: 16),
-                  const Text('PASSWORD', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: DuoColors.textGrey, letterSpacing: 1)),
+                  const Text('PASSWORD',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: DuoColors.textGrey,
+                          letterSpacing: 1)),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _passwordCtrl,
                     obscureText: _obscure,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: 'Masukkan password',
                       suffixIcon: IconButton(
-                        icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: DuoColors.textGrey),
+                        icon: Icon(
+                            _obscure ? Icons.visibility_off : Icons.visibility,
+                            color: DuoColors.textGrey),
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
                     onFieldSubmitted: (_) => _login(),
                   ),
                   const SizedBox(height: 28),
-
                   Consumer<AuthProvider>(
                     builder: (_, auth, __) => _DuoButton(
                       label: 'MASUK',
@@ -116,21 +142,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBE6),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFFFE066), width: 2),
-                    ),
-                    child: const Text(
-                      '💡 Akun guru: guru / guru123\n💡 Siswa dibuat oleh guru',
-                      style: TextStyle(fontSize: 13, color: Color(0xFF7A5C00), fontWeight: FontWeight.w700),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -167,7 +178,10 @@ class _DuoButtonState extends State<_DuoButton> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 80),
@@ -176,15 +190,29 @@ class _DuoButtonState extends State<_DuoButton> {
         decoration: BoxDecoration(
           color: widget.loading ? DuoColors.textGrey : widget.color,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: _pressed ? [] : [
-            BoxShadow(color: widget.shadowColor, offset: const Offset(0, 4), blurRadius: 0),
-          ],
+          boxShadow: _pressed
+              ? []
+              : [
+                  BoxShadow(
+                      color: widget.shadowColor,
+                      offset: const Offset(0, 4),
+                      blurRadius: 0),
+                ],
         ),
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Center(
           child: widget.loading
-              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-              : Text(widget.label, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2.5))
+              : Text(widget.label,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5)),
         ),
       ),
     );
