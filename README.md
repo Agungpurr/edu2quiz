@@ -1,4 +1,7 @@
-![WhatsApp Image 2026-03-19 at 23 30 37](https://github.com/user-attachments/assets/abade66c-b789-4540-b118-d4d0d00864b9)# 🦉 EduQuiz — Belajar Seru Tiap Hari! ✨
+
+
+
+# 🦉 EduQuiz — Belajar Seru Tiap Hari! ✨
 
 > Aplikasi mobile kuis edukasi interaktif berbasis **Flutter** yang membuat belajar jadi menyenangkan setiap harinya.
 
@@ -167,6 +170,8 @@ docs:     perubahan dokumentasi
 
 
 ## 📄 Lisensi
+
+![WhatsApp Image 2026-03-19 at 23 30 37](https://github.com/user-attachments/assets/abade66c-b789-4540-b118-d4d0d00864b9)
 
 Proyek ini dilisensikan di bawah [MIT License](LICENSE).
 
