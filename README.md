@@ -163,7 +163,7 @@ docs:     perubahan dokumentasi
 
 ---
 
-![WhatsApp Image 2026-03-19 at 23 30 37](https://github.com/user-attachments/assets/4753f825-7d38-4269-89a2-e62e2d9db714)
+
 
 
 ## 📄 Lisensi
